@@ -3,7 +3,12 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from fleet_app.views.vehicle_views import vehicles
 from fleet_app.views.driver_views import drivers
-from fleet_app.views.dispatch_views import dispatch_orders
+from fleet_app.views.dispatch_views import (
+    dispatch_orders,
+    dispatch_order_start,
+    dispatch_order_complete,
+    dispatch_order_cancel,
+)
 from fleet_app.views.maintenance_views import maintenance_records
 from fleet_app.views.fuel_views import fuel_records
 
@@ -16,6 +21,9 @@ urlpatterns = [
     path('vehicles/', vehicles),
     path('drivers/', drivers),
     path('dispatch-orders/', dispatch_orders),
+    path('dispatch-orders/<int:order_id>/start/', dispatch_order_start),
+    path('dispatch-orders/<int:order_id>/complete/', dispatch_order_complete),
+    path('dispatch-orders/<int:order_id>/cancel/', dispatch_order_cancel),
     path('maintenance-records/', maintenance_records),
     path('fuel-records/', fuel_records),
 ]
