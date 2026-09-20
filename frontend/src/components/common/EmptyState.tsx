@@ -1,2 +1,5 @@
 import { Empty } from 'antd';
-export function EmptyState() { return <Empty description="暂无数据" />; }
+
+export function EmptyState({ description = '暂无数据' }: { description?: string }) {
+  return <Empty description={description} />;
+}

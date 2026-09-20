@@ -1,6 +1,14 @@
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from fleet_app.services.fuel_analytics_service import list_fuel_records
-@api_view(['GET'])
-def fuel_records(request):
-    return Response(list_fuel_records())
+from rest_framework.views import APIView
+
+from fleet_app.services import fuel_analytics_service
+
+
+class FuelRecordListView(APIView):
+    def get(self, request):
+        return Response(fuel_analytics_service.list_fuel_records())
+
+
+class FuelMonthlySummaryView(APIView):
+    def get(self, request):
+        return Response(fuel_analytics_service.monthly_summary())

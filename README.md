@@ -16,11 +16,45 @@ docker compose up -d
 
 ## 主要功能
 
-- 调度中心：创建调度单、指派车辆和司机、查看运输时间线。
+- 调度中心：创建调度单、指派车辆和司机、开始/完成/取消运输、已指派单据改派、运输时间线。
 - 车辆管理：车辆卡片、维保历史、油耗趋势入口。
 - 司机管理：状态筛选、调度历史、驾驶时长统计。
 - 维保管理：维修日历、费用统计、到期高亮。
 - 油耗分析：油耗趋势、月度总油耗、异常油耗预警。
+
+## 派单闭环规则（持久化）
+
+创建调度单时后端强制校验，任一不满足都会返回明确原因：
+
+| 校验项 | 规则 | 失败响应 |
+| --- | --- | --- |
+| 车辆状态 | 必须为 `Available` | 409 `DISPATCH_CONFLICT` |
+| 车辆载重 | 额定载重 ≥ 货物重量 | 400 `VEHICLE_PAYLOAD_INSUFFICIENT` |
+| 车辆保险 | 保险到期日不早于当天 | 400 `VEHICLE_INSURANCE_EXPIRED` |
+| 司机状态 | 必须为 `Available` | 409 `DISPATCH_CONFLICT` |
+| 司机证件 | 驾照到期日不早于当天 | 400 `DRIVER_LICENSE_EXPIRED` |
+| 资源占用 | 同一车辆/司机已有未结束单据（Assigned/InProgress）即拒绝 | 409 `DISPATCH_CONFLICT` |
+
+状态流转：`Assigned --开始--> InProgress --完成--> Completed`，`Assigned/InProgress --取消--> Cancelled`。
+
+- 开始运输：单据变 `InProgress`，车辆与司机同步切换 `OnTrip`。
+- 完成 / 取消：单据结束，车辆与司机恢复 `Available`。
+- 运输中（InProgress）的单据不得改派；任何状态不得重复开始/完成/取消。
+- 并发分配由事务 + 行锁（PostgreSQL `SELECT FOR UPDATE`）+ 部分唯一约束三重防护，冲突返回 409。
+- 所有状态变化写入 `DispatchEvent` 时间线及各状态时间戳，数据落 PostgreSQL 命名卷，**服务重启后状态、占用关系与时间线仍可查询**。
+
+调度接口（均返回 JSON，错误体为 `{"code": "...", "reason": "..."}`）：
+
+```
+POST   /api/dispatch-orders/                 创建并指派
+GET    /api/dispatch-orders/?status=InProgress
+POST   /api/dispatch-orders/{id}/start/      开始运输
+POST   /api/dispatch-orders/{id}/complete/   完成运输
+POST   /api/dispatch-orders/{id}/cancel/     取消单据
+POST   /api/dispatch-orders/{id}/reassign/   改派（仅 Assigned）
+```
+
+后端容器启动时自动执行 `migrate` 并通过幂等的 `seed_demo` 写入演示车辆/司机（含保险过期、载重不足、维保中等场景）。
 
 ## 本地开发
 

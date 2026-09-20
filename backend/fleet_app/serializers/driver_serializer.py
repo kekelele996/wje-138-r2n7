@@ -1,5 +1,13 @@
-from rest_framework import serializers
-from fleet_app import models
+from fleet_app.models import Driver
+from fleet_app.serializers.common import CamelModelSerializer
 
-class DriverSerializer(serializers.Serializer):
-    id = serializers.IntegerField(required=False)
+
+class DriverSerializer(CamelModelSerializer):
+    class Meta:
+        model = Driver
+        fields = [
+            'id', 'name', 'phone', 'license_type', 'license_expire_date',
+            'hire_date', 'status', 'driving_hours', 'violation_count',
+            'created_at', 'updated_at', 'status_changed_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at', 'status_changed_at']
